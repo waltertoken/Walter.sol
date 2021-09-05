@@ -556,19 +556,19 @@ contract Walter is IBEP20, Auth {
             block.timestamp
         );
 
-        uint256 amountBNB = address(this).balance.sub(balanceBefore);
+        uint256 amountADA = address(this).balance.sub(balanceBefore);
 
-        uint256 totalBNBFee = totalFee.sub(dynamicLiquidityFee.div(2));
+        uint256 totalADAFee = totalFee.sub(dynamicLiquidityFee.div(2));
 
-        uint256 amountBNBLiquidity = amountBNB.mul(dynamicLiquidityFee).div(totalBNBFee).div(2);
-        uint256 amountBNBReflection = amountBNB.mul(reflectionFee).div(totalBNBFee);
-        uint256 amountBNBMarketing = amountBNB.mul(marketingFee).div(totalBNBFee);
+        uint256 amountADALiquidity = amountADA.mul(dynamicLiquidityFee).div(totalADAFee).div(2);
+        uint256 amountADAReflection = amountADA.mul(reflectionFee).div(totalADAFee);
+        uint256 amountADAMarketing = amountADA.mul(marketingFee).div(totalADAFee);
 
-        try distributor.deposit{value: amountBNBReflection}() {} catch {}
-        payable(marketingFeeReceiver).call{value: amountBNBMarketing, gas: 30000}("");
+        try distributor.deposit{value: amountADAReflection}() {} catch {}
+        payable(marketingFeeReceiver).call{value: amountADAMarketing, gas: 30000}("");
 
         if(amountToLiquify > 0){
-            router.addLiquidityETH{value: amountBNBLiquidity}(
+            router.addLiquidityETH{value: amountADALiquidity}(
                 address(this),
                 amountToLiquify,
                 0,
@@ -576,7 +576,7 @@ contract Walter is IBEP20, Auth {
                 autoLiquidityReceiver,
                 block.timestamp
             );
-            emit AutoLiquify(amountBNBLiquidity, amountToLiquify);
+            emit AutoLiquify(amountADALiquidity, amountToLiquify);
         }
     }
 
@@ -713,6 +713,6 @@ contract Walter is IBEP20, Auth {
         return getLiquidityBacking(accuracy) > target;
     }
 
-    event AutoLiquify(uint256 amountBNB, uint256 amountBOG);
+    event AutoLiquify(uint256 amountADA, uint256 amountBOG);
     event BuybackMultiplierActive(uint256 duration);
 }
