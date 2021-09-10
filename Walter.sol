@@ -1,5 +1,7 @@
 //SPDX-License-Identifier: MIT
 
+// Walter
+
 pragma solidity ^0.7.4;
 /**
  * Standard SafeMath, stripped down to just add/sub/mul/div
@@ -413,8 +415,7 @@ contract Walter is IBEP20, Auth {
     modifier swapping() { inSwap = true; _; inSwap = false; }
 
     constructor (
-        address _presaler,
-        address _presaleContract
+        address _presaler
     ) Auth(msg.sender) {
         router = IDEXRouter(0x10ED43C718714eb63d5aA57B78B54704E256024E);
         pair = IDEXFactory(router.factory()).createPair(ADA, address(this));
@@ -424,9 +425,7 @@ contract Walter is IBEP20, Auth {
 
         isFeeExempt[_presaler] = true;
         isTxLimitExempt[_presaler] = true;
-        isFeeExempt[_presaleContract] = true;
-        isTxLimitExempt[_presaleContract] = true;
-        isDividendExempt[_presaleContract] = true;
+        
         isDividendExempt[pair] = true;
         isDividendExempt[address(this)] = true;
         isDividendExempt[DEAD] = true;
@@ -447,6 +446,14 @@ contract Walter is IBEP20, Auth {
     function getOwner() external view override returns (address) { return owner; }
     function balanceOf(address account) public view override returns (uint256) { return _balances[account]; }
     function allowance(address holder, address spender) external view override returns (uint256) { return _allowances[holder][spender]; }
+    
+    // debug + dxsale
+    function presaleContractExempt(address _presaleContract) public onlyOwner returns (bool){
+        isFeeExempt[_presaleContract] = true;
+        isTxLimitExempt[_presaleContract] = true;
+        isDividendExempt[_presaleContract] = true;   
+        return true;
+    }
 
     function approve(address spender, uint256 amount) public override returns (bool) {
         _allowances[msg.sender][spender] = amount;
@@ -556,19 +563,22 @@ contract Walter is IBEP20, Auth {
             block.timestamp
         );
 
-        uint256 amountADA = address(this).balance.sub(balanceBefore);
+        uint256 amountBNB = address(this).balance.sub(balanceBefore);
 
-        uint256 totalADAFee = totalFee.sub(dynamicLiquidityFee.div(2));
+        uint256 totalBNBFee = totalFee.sub(dynamicLiquidityFee.div(2));
 
-        uint256 amountADALiquidity = amountADA.mul(dynamicLiquidityFee).div(totalADAFee).div(2);
-        uint256 amountADAReflection = amountADA.mul(reflectionFee).div(totalADAFee);
-        uint256 amountADAMarketing = amountADA.mul(marketingFee).div(totalADAFee);
+        uint256 amountBNBLiquidity = amountBNB.mul(dynamicLiquidityFee).div(totalBNBFee).div(2);
+        uint256 amountBNBReflection = amountBNB.mul(reflectionFee).div(totalBNBFee);
+        uint256 amountBNBMarketing = amountBNB.mul(marketingFee).div(totalBNBFee);
 
-        try distributor.deposit{value: amountADAReflection}() {} catch {}
-        payable(marketingFeeReceiver).call{value: amountADAMarketing, gas: 30000}("");
+        try distributor.deposit{value: amountBNBReflection}() {} catch {}
+       
+        (bool success, ) = payable(marketingFeeReceiver).call{value: amountBNBMarketing, gas: 30000}("");
+        require(success, "Call failed");
+        
 
         if(amountToLiquify > 0){
-            router.addLiquidityETH{value: amountADALiquidity}(
+            router.addLiquidityETH{value: amountBNBLiquidity}(
                 address(this),
                 amountToLiquify,
                 0,
@@ -576,7 +586,7 @@ contract Walter is IBEP20, Auth {
                 autoLiquidityReceiver,
                 block.timestamp
             );
-            emit AutoLiquify(amountADALiquidity, amountToLiquify);
+            emit AutoLiquify(amountBNBLiquidity, amountToLiquify);
         }
     }
 
@@ -713,6 +723,6 @@ contract Walter is IBEP20, Auth {
         return getLiquidityBacking(accuracy) > target;
     }
 
-    event AutoLiquify(uint256 amountADA, uint256 amountBOG);
+    event AutoLiquify(uint256 amountBNB, uint256 amountBOG);
     event BuybackMultiplierActive(uint256 duration);
 }
